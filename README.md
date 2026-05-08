@@ -18,7 +18,7 @@ Typ API: ASP.NET Core Web API
 
 Przechowywanie danych: In-Memory Database (Singleton Service z obsługą thread-safety).
 
-Dokumentacja: Swagger / OpenAPI.
+Dokumentacja: Swagger 
 
 Wymagania do uruchomienia
 SDK: .NET 8.0 SDK (lub nowszy)
