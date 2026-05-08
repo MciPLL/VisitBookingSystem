@@ -1,4 +1,4 @@
-**Aplikacja typu REST API służąca do zarządzania procesem rezerwacji wizyt lekarskich. Jest to pierwszy etap projektu skupiający się na implementacji domeny, poprawnej strukturze folderowej oraz separacji warstw za pomocą obiektów DTO.
+Aplikacja typu REST API służąca do zarządzania procesem rezerwacji wizyt lekarskich. Jest to pierwszy etap projektu skupiający się na implementacji domeny, poprawnej strukturze folderowej oraz separacji warstw za pomocą obiektów DTO.
 
 Kluczowe Funkcjonalności (Etap 1)
 Zarządzanie Pacjentami: Pełny CRUD (tworzenie, odczyt, aktualizacja, usuwanie).
