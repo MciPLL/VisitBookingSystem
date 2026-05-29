@@ -1,17 +1,26 @@
 using VisitBookingSystem.Data;
+using VisitBookingSystem.Middleware;
+using VisitBookingSystem.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+// Rejestracja bazy danych w pamięci (Singleton dla zachowania danych między żądaniami)
 builder.Services.AddSingleton<IInMemoryDatabase, InMemoryDatabase>();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+// ETAP II: Rejestracja serwisów biznesowych w kontenerze DI
+builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+
+builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ETAP II: Globalna obsługa wyjątków (Middleware)
+app.UseMiddleware<ExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
