@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.EntityFrameworkCore;
 using VisitBookingSystem.Data;
 using VisitBookingSystem.DTOs;
 using VisitBookingSystem.Exceptions;
@@ -7,16 +9,26 @@ namespace VisitBookingSystem.Services
 {
     public class PatientService : IPatientService
     {
-        private readonly IInMemoryDatabase _db;
+        private readonly AppDbContext _context;
 
-        public PatientService(IInMemoryDatabase db)
+        public PatientService(AppDbContext context)
         {
-            _db = db;
+            _context = context;
         }
 
-        public IEnumerable<PatientDto> GetAll()
+        public IEnumerable<PatientDto> GetAll(string? sortBy = null, string? sortOrder = null)
         {
-            return _db.Patients.Select(p => new PatientDto
+            var query = _context.Patients.AsQueryable();
+
+            bool desc = sortOrder?.ToLower() == "desc";
+            query = sortBy?.ToLower() switch
+            {
+                "firstname" => desc ? query.OrderByDescending(p => p.FirstName) : query.OrderBy(p => p.FirstName),
+                "email"     => desc ? query.OrderByDescending(p => p.Email)     : query.OrderBy(p => p.Email),
+                _           => desc ? query.OrderByDescending(p => p.LastName)  : query.OrderBy(p => p.LastName)
+            };
+
+            return query.Select(p => new PatientDto
             {
                 Id = p.Id,
                 FirstName = p.FirstName,
@@ -27,7 +39,7 @@ namespace VisitBookingSystem.Services
 
         public PatientDto GetById(int id)
         {
-            var patient = _db.Patients.FirstOrDefault(p => p.Id == id) 
+            var patient = _context.Patients.FirstOrDefault(p => p.Id == id)
                 ?? throw new NotFoundException($"Pacjent o Id {id} nie istnieje.");
 
             return new PatientDto
@@ -41,20 +53,18 @@ namespace VisitBookingSystem.Services
 
         public PatientDto Create(CreatePatientDto dto)
         {
-            if (_db.Patients.Any(p => p.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase)))
-            {
+            if (_context.Patients.Any(p => p.Email.ToLower() == dto.Email.ToLower()))
                 throw new BusinessRuleException("Pacjent z takim adresem email już istnieje.");
-            }
 
             var newPatient = new Patient
             {
-                Id = _db.GetNextPatientId(),
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 Email = dto.Email
             };
 
-            _db.Patients.Add(newPatient);
+            _context.Patients.Add(newPatient);
+            _context.SaveChanges();
 
             return new PatientDto
             {
@@ -67,26 +77,47 @@ namespace VisitBookingSystem.Services
 
         public void Update(int id, CreatePatientDto dto)
         {
-            var patient = _db.Patients.FirstOrDefault(p => p.Id == id)
+            var patient = _context.Patients.FirstOrDefault(p => p.Id == id)
                 ?? throw new NotFoundException($"Pacjent o Id {id} nie istnieje.");
 
-            if (_db.Patients.Any(p => p.Id != id && p.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase)))
-            {
+            if (_context.Patients.Any(p => p.Id != id && p.Email.ToLower() == dto.Email.ToLower()))
                 throw new BusinessRuleException("Inny pacjent już używa tego adresu email.");
-            }
 
             patient.FirstName = dto.FirstName;
             patient.LastName = dto.LastName;
             patient.Email = dto.Email;
+            _context.SaveChanges();
         }
 
         public void Delete(int id)
         {
-            var patient = _db.Patients.FirstOrDefault(p => p.Id == id)
+            var patient = _context.Patients.FirstOrDefault(p => p.Id == id)
                 ?? throw new NotFoundException($"Pacjent o Id {id} nie istnieje.");
 
-            _db.Patients.Remove(patient);
-            _db.Appointments.RemoveAll(a => a.PatientId == id);
+            var appointments = _context.Appointments.Where(a => a.PatientId == id).ToList();
+            _context.Appointments.RemoveRange(appointments);
+            _context.Patients.Remove(patient);
+            _context.SaveChanges();
+        }
+
+        public string ExportToCsv()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Id;FirstName;LastName;Email");
+
+            foreach (var p in _context.Patients)
+            {
+                sb.AppendLine($"{p.Id};{EscapeCsv(p.FirstName)};{EscapeCsv(p.LastName)};{EscapeCsv(p.Email)}");
+            }
+
+            return sb.ToString();
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+                return $"\"{value.Replace("\"", "\"\"")}\"";
+            return value;
         }
     }
 }
